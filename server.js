@@ -1,41 +1,28 @@
-const express = require('express');
-const path = require('path');
-const fs = require('fs');
-const axios = require('axios');
-
+const express = require("express");
+const fetch = require("node-fetch");
 const app = express();
 const port = process.env.PORT || 10000;
 
-// HTML file serve
-app.get('/', async (req, res) => {
-  const uid = req.query.uid || "unknown";
-  const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+// === Handle UID trace request ===
+app.get("/", async (req, res) => {
+    const uid = req.query.uid;
+    if (!uid) return res.status(400).json({ error: "UID missing" });
 
-  try {
-    const { data } = await axios.get(`http://ip-api.com/json/${ip}`);
-    const log = {
-      uid,
-      ip,
-      isp: data.isp,
-      city: data.city,
-      region: data.regionName,
-      country: data.country,
-      time: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
-    };
+    try {
+        const ipInfo = await fetch("https://ipapi.co/json/");
+        const data = await ipInfo.json();
 
-    const logsPath = path.join(__dirname, "logs.json");
-    const logs = fs.existsSync(logsPath) ? JSON.parse(fs.readFileSync(logsPath)) : [];
-    logs.push(log);
-    fs.writeFileSync(logsPath, JSON.stringify(logs, null, 2));
-
-    res.sendFile(path.join(__dirname, "tracker.html"));
-  } catch (e) {
-    console.error(e);
-    res.send(`<h1>🔍 UID Tracked</h1><p>But location info fetch failed.</p>`);
-  }
+        res.json({
+            uid,
+            ip: data.ip,
+            city: data.city,
+            region: data.region,
+            country: data.country_name,
+            org: data.org
+        });
+    } catch (e) {
+        res.status(500).json({ error: "Failed to fetch IP info" });
+    }
 });
 
-// Start server
-app.listen(port, () => {
-  console.log(`✅ Tracker running at http://localhost:${port}`);
-});
+app.listen(port, () => console.log(`🚀 Server started on port ${port}`));
