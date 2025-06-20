@@ -7,40 +7,63 @@ const app = express();
 const port = process.env.PORT || 10000;
 
 app.get("/", async (req, res) => {
-    const uid = req.query.uid || "unknown";
+  const uid = req.query.uid || "unknown";
 
-    try {
-        const response = await fetch("https://ipapi.co/json/");
-        const data = await response.json();
+  const logFile = path.join(__dirname, "logs.json");
 
-        const logEntry = {
-            uid,
-            ip: data.ip,
-            city: data.city,
-            region: data.region,
-            country: data.country_name,
-            org: data.org,
-            time: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
+  async function fetchIPInfo() {
+    const sources = [
+      "https://ipwho.is/",
+      "https://ipapi.co/json/",
+      "https://ipinfo.io/json?token=demo" // Replace 'demo' with your real token if you have one
+    ];
+
+    for (const url of sources) {
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) continue;
+
+        const data = await resp.json();
+
+        // Normalize different API responses
+        return {
+          ip: data.ip || "N/A",
+          city: data.city || (data.location?.city ?? "N/A"),
+          region: data.region || (data.region_name ?? "N/A"),
+          country: data.country || data.country_name || "N/A",
+          org: data.org || data.connection?.isp || data.org || "Unknown"
         };
-
-        // Read existing logs
-        let logs = [];
-        const logFile = path.join(__dirname, "logs.json");
-
-        if (fs.existsSync(logFile)) {
-            logs = JSON.parse(fs.readFileSync(logFile, "utf8"));
-        }
-
-        logs.push(logEntry);
-
-        fs.writeFileSync(logFile, JSON.stringify(logs, null, 2));
-
-        res.json({ success: true, message: "Data logged successfully", logEntry });
-    } catch (err) {
-        res.status(500).json({ error: "Something went wrong while fetching IP info" });
+      } catch (e) {
+        continue;
+      }
     }
+
+    throw new Error("All IP APIs failed.");
+  }
+
+  try {
+    const info = await fetchIPInfo();
+
+    const logEntry = {
+      uid,
+      ...info,
+      time: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
+    };
+
+    let logs = [];
+    if (fs.existsSync(logFile)) {
+      logs = JSON.parse(fs.readFileSync(logFile, "utf8"));
+    }
+
+    logs.push(logEntry);
+
+    fs.writeFileSync(logFile, JSON.stringify(logs, null, 2));
+    res.json({ success: true, logEntry });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch IP info from all sources." });
+  }
 });
 
 app.listen(port, () => {
-    console.log(`🚀 Rudra Tracker running at http://localhost:${port}`);
+  console.log(`🚀 Rudra Tracker server started on port ${port}`);
 });
