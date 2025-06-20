@@ -7,6 +7,10 @@
   },
   "dependencies": {
     "express": "latest",
-    "node-fetch": "latest"
+    "axios": "latest",
+    "node-fetch": "latest",
+    "cors": "latest",
+    "body-parser": "latest",
+    "dotenv": "latest"
   }
 }
