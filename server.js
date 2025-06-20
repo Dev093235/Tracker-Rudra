@@ -15,30 +15,34 @@ app.get("/", async (req, res) => {
     const sources = [
       "https://ipwho.is/",
       "https://ipapi.co/json/",
-      "https://ipinfo.io/json?token=demo" // Replace 'demo' with your real token if you have one
+      "https://ipinfo.io/json?token=demo"
     ];
 
     for (const url of sources) {
       try {
+        console.log(`🔄 Trying: ${url}`);
         const resp = await fetch(url);
-        if (!resp.ok) continue;
+        if (!resp.ok) {
+          console.log(`❌ Failed: ${url}`);
+          continue;
+        }
 
         const data = await resp.json();
-
-        // Normalize different API responses
+        console.log(`✅ Success from: ${url}`);
         return {
           ip: data.ip || "N/A",
-          city: data.city || (data.location?.city ?? "N/A"),
-          region: data.region || (data.region_name ?? "N/A"),
+          city: data.city || data.location?.city || "N/A",
+          region: data.region || data.region_name || "N/A",
           country: data.country || data.country_name || "N/A",
-          org: data.org || data.connection?.isp || data.org || "Unknown"
+          org: data.org || data.connection?.isp || "Unknown"
         };
       } catch (e) {
+        console.log(`⚠️ Error from: ${url} → ${e.message}`);
         continue;
       }
     }
 
-    throw new Error("All IP APIs failed.");
+    throw new Error("All IP sources failed.");
   }
 
   try {
@@ -58,12 +62,15 @@ app.get("/", async (req, res) => {
     logs.push(logEntry);
 
     fs.writeFileSync(logFile, JSON.stringify(logs, null, 2));
+    console.log("📁 Log saved:", logEntry);
+
     res.json({ success: true, logEntry });
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch IP info from all sources." });
+    console.log("❌ Final Error:", err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
 app.listen(port, () => {
-  console.log(`🚀 Rudra Tracker server started on port ${port}`);
+  console.log(`🚀 Rudra Tracker LIVE on port ${port}`);
 });
