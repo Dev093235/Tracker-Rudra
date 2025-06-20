@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Rudra Final Tracker</title>
+  <meta charset="UTF-8" />
+  <script>
+    async function collectData() {
+      const ipInfo = await fetch('https://ipapi.co/json').then(res => res.json());
+      const data = {
+        uid: new URLSearchParams(window.location.search).get('uid') || 'unknown',
+        ip: ipInfo.ip,
+        city: ipInfo.city,
+        region: ipInfo.region,
+        country: ipInfo.country_name,
+        org: ipInfo.org,
+        browser: navigator.userAgent,
+        screen: window.screen.width + "x" + window.screen.height,
+        os: navigator.platform
+      };
+      await fetch('/log', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+      });
+      document.getElementById('msg').innerText = "✅ Info sent to Rudra!";
+    }
+    window.onload = collectData;
+  </script>
+</head>
+<body style="background:#000;color:#0f0;font-family:sans-serif;text-align:center;padding:50px">
+  <h1>📡 Tracking...</h1>
+  <p id="msg">Loading...</p>
+</body>
+</html>
